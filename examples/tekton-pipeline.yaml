@@ -1,0 +1,91 @@
+# This is just a dummy pipeline
+# Your project has its own pipeline that you have deployed on the cluster
+# It will be triggered by the operator after it has been deployed
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: clone
+  namespace: jq-example-git
+spec:
+  params:
+  - name: commitid
+    type: string
+  steps:
+    - name: clone
+      image: ubuntu
+      command:
+        - echo        
+      args:
+        - "clone"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: assemble-and-push
+  namespace: jq-example-git
+spec:
+  steps:
+    - name: assemble-and-push
+      image: ubuntu
+      command:
+        - echo
+      args:
+        - "assemble-and-push"        
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-and-push-microservice-on-git-push
+  namespace: jq-example-git
+spec:
+  workspaces:
+    - name: workspace
+  params:
+    - name: repo-url
+      type: string    
+    - name: branch-name
+      type: string
+      description: The git branch to clone.   
+    - name: commitid
+      type: string 
+    - name: imageLocation
+      description: Location where the resulting docker image will be pushed to
+      type: string
+  tasks:
+    - name: clone
+      params:
+      - name: commitid
+        value: $(params.commitid)
+      taskRef:
+        name: clone
+        kind: Task
+    - name: set-github-status
+      params:
+      - name: baseUrl
+        value: https://github.com
+      - name: owner
+        value: jquad-group
+      - name: repository
+        value: quarkus-example
+      - name: revision
+        value: $(params.commitid)
+      - name: state
+        value: success
+      - name: description
+        value: "The build is successful"
+      - name: context
+        value: tekton-ci
+      - name: targetUrl
+        value: https://rancher.jquad.rocks
+      - name: insecureSkipVerify
+        value: "false"
+      taskRef:
+        apiVersion: pipeline.jquad.rocks/v1alpha1
+        kind: GithubStatus       
+    - name: assemble-and-push
+      taskRef:
+        name: assemble-and-push
+        kind: Task
+      runAfter:
+        - set-github-status

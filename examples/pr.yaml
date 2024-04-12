@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: build-and-push-microservice-on-git-push-
+  namespace: jq-example-git
+  labels:
+    app: microservice
+    github-status-controller: enabled
+  annotations:
+    github-status-controller/github-revision-param-name: tasks.clone.commitid
+    github-status-controller/github-base-url: https://github.com
+    github-status-controller/github-owner: jquad-group
+    github-status-controller/github-repository: quarkus-example
+    github-status-controller/tls-insecure: enabled
+    github-status-controller/github-secret-name: git
+    github-status-controller/github-secret-key: accessToken
+spec:
+  params:
+  - name: "repo-url"
+    value: "https://github.com/jquad-group/microservice.git"
+  - name: "branch-name"
+    value: main
+  - name: "commitid"
+    value: 1a33304ce44c9a9116bce1a9603e313181dc9e37
+  - name: "imageLocation"
+    value: "docker.io/org/image"
+  pipelineRef:
+    name: build-and-push-microservice-on-git-push
+  serviceAccountName: default
+  workspaces:
+  - name: workspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+        volumeMode: Filesystem
